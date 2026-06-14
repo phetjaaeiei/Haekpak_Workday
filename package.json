@@ -1,0 +1,13 @@
+{
+  "name": "haekpak-workday",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Workday selection form for shabu restaurant staff.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

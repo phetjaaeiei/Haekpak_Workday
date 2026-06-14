@@ -21,7 +21,6 @@ const MONTH_NAMES = [
   "ธ.ค.",
 ];
 const REQUIRED_DAYS = 3;
-const ADMIN_PASSWORD = "Password123";
 
 const state = {
   profile: null,
@@ -30,6 +29,7 @@ const state = {
   schedule: { selections: [] },
   selectedDays: new Set(),
   adminAuthenticated: false,
+  adminPassword: "",
 };
 
 const views = {
@@ -464,6 +464,9 @@ async function clearAdminWeek() {
 
   const response = await fetch(`/api/schedule?weekStart=${encodeURIComponent(state.adminWeekStart)}`, {
     method: "DELETE",
+    headers: {
+      "x-admin-password": state.adminPassword,
+    },
   });
   const result = await response.json();
   if (!response.ok) {
@@ -496,17 +499,31 @@ function bindEvents() {
   });
 
   elements.adminNavButton.addEventListener("click", () => showAdminGate());
-  elements.adminLoginForm.addEventListener("submit", (event) => {
+  elements.adminLoginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (elements.adminPasswordInput.value === ADMIN_PASSWORD) {
+    const password = elements.adminPasswordInput.value;
+
+    try {
+      const response = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || !result.ok) {
+        throw new Error("รหัสผ่านไม่ถูกต้อง");
+      }
+
       state.adminAuthenticated = true;
+      state.adminPassword = password;
       showAdminLoginMessage("");
       loadAdminView();
       return;
+    } catch (error) {
+      showAdminLoginMessage(error.message || "รหัสผ่านไม่ถูกต้อง");
+      elements.adminPasswordInput.select();
     }
-
-    showAdminLoginMessage("รหัสผ่านไม่ถูกต้อง");
-    elements.adminPasswordInput.select();
   });
   elements.refreshAdminButton.addEventListener("click", () => loadAdminView());
   elements.adminPrevWeekButton.addEventListener("click", () => setWeek(-1, "admin"));

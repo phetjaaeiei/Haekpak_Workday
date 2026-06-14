@@ -6,6 +6,10 @@ const PORT = Number(process.env.PORT || 3000);
 const PUBLIC_DIR = path.join(__dirname, "public");
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "schedules.json");
+const SUPABASE_URL = String(process.env.SUPABASE_URL || "").replace(/\/$/, "");
+const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || "");
+const SUPABASE_TABLE = process.env.SUPABASE_TABLE || "workday_selections";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "Password123";
 
 const ROLES = {
   server: { label: "พนักงานเสิร์ฟ", capacity: 4 },
@@ -52,6 +56,123 @@ function writeData(data) {
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
+function hasSupabaseConfig() {
+  return Boolean(SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function toClientSelection(row) {
+  return {
+    id: row.id,
+    nickname: row.nickname,
+    role: row.role,
+    weekStart: row.week_start,
+    days: Array.isArray(row.days) ? row.days : [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+async function supabaseRequest(params, options = {}) {
+  if (typeof fetch !== "function") {
+    throw new Error("Node.js version must support fetch to use Supabase");
+  }
+
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?${params.toString()}`, {
+    method: options.method || "GET",
+    headers: {
+      apikey: SUPABASE_SERVICE_ROLE_KEY,
+      authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      "content-type": "application/json",
+      ...(options.prefer ? { prefer: options.prefer } : {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : null;
+
+  if (!response.ok) {
+    throw new Error(payload?.message || payload?.error || "Supabase request failed");
+  }
+
+  return payload;
+}
+
+async function readScheduleData(weekStart) {
+  if (!hasSupabaseConfig()) {
+    const data = readData();
+    const selections = isIsoDate(weekStart)
+      ? data.selections.filter((item) => item.weekStart === weekStart)
+      : data.selections;
+    return { selections };
+  }
+
+  const params = new URLSearchParams({ select: "*", order: "created_at.asc" });
+  if (isIsoDate(weekStart)) {
+    params.set("week_start", `eq.${weekStart}`);
+  }
+
+  const rows = await supabaseRequest(params);
+  return { selections: rows.map(toClientSelection) };
+}
+
+async function saveScheduleSelection(validSelection, existingSelections) {
+  const now = new Date().toISOString();
+
+  if (!hasSupabaseConfig()) {
+    const data = readData();
+    const existingIndex = data.selections.findIndex((item) => item.id === validSelection.id);
+
+    if (existingIndex >= 0) {
+      data.selections[existingIndex] = {
+        ...data.selections[existingIndex],
+        ...validSelection,
+        updatedAt: now,
+      };
+    } else {
+      data.selections.push({
+        ...validSelection,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    writeData(data);
+    return;
+  }
+
+  const existingSelection = existingSelections.find((item) => item.id === validSelection.id);
+  const params = new URLSearchParams({ on_conflict: "id" });
+  await supabaseRequest(params, {
+    method: "POST",
+    prefer: "resolution=merge-duplicates,return=minimal",
+    body: {
+      id: validSelection.id,
+      nickname: validSelection.nickname,
+      role: validSelection.role,
+      week_start: validSelection.weekStart,
+      days: validSelection.days,
+      created_at: existingSelection?.createdAt || now,
+      updated_at: now,
+    },
+  });
+}
+
+async function deleteScheduleWeek(weekStart) {
+  if (!hasSupabaseConfig()) {
+    const data = readData();
+    data.selections = data.selections.filter((item) => item.weekStart !== weekStart);
+    writeData(data);
+    return;
+  }
+
+  const params = new URLSearchParams({ week_start: `eq.${weekStart}` });
+  await supabaseRequest(params, {
+    method: "DELETE",
+    prefer: "return=minimal",
+  });
+}
+
 function sendJson(res, status, payload) {
   const body = JSON.stringify(payload);
   res.writeHead(status, {
@@ -64,6 +185,10 @@ function sendJson(res, status, payload) {
 function sendText(res, status, text) {
   res.writeHead(status, { "content-type": "text/plain; charset=utf-8" });
   res.end(text);
+}
+
+function isAdminAuthorized(req) {
+  return req.headers["x-admin-password"] === ADMIN_PASSWORD;
 }
 
 function getRequestBody(req) {
@@ -164,15 +289,11 @@ function validateSelectionPayload(payload, existingSelections) {
   return { id, nickname, role, weekStart, days: uniqueDays.sort() };
 }
 
-function getScheduleForWeek(weekStart) {
-  const data = readData();
-  const filtered = isIsoDate(weekStart)
-    ? data.selections.filter((item) => item.weekStart === weekStart)
-    : data.selections;
-
+async function getScheduleForWeek(weekStart) {
+  const data = await readScheduleData(weekStart);
   return {
     roles: ROLES,
-    selections: filtered,
+    selections: data.selections,
   };
 }
 
@@ -204,6 +325,23 @@ function serveStatic(req, res) {
 async function handleApi(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
 
+  if (url.pathname === "/api/admin/login") {
+    if (req.method !== "POST") {
+      res.writeHead(405, { allow: "POST" });
+      res.end();
+      return;
+    }
+
+    try {
+      const body = await getRequestBody(req);
+      const payload = JSON.parse(body || "{}");
+      sendJson(res, 200, { ok: payload.password === ADMIN_PASSWORD });
+    } catch (error) {
+      sendJson(res, 400, { ok: false });
+    }
+    return;
+  }
+
   if (url.pathname !== "/api/schedule") {
     sendJson(res, 404, { error: "ไม่พบ API นี้" });
     return;
@@ -211,7 +349,7 @@ async function handleApi(req, res) {
 
   if (req.method === "GET") {
     const weekStart = normalizeDate(url.searchParams.get("weekStart"));
-    sendJson(res, 200, getScheduleForWeek(weekStart));
+    sendJson(res, 200, await getScheduleForWeek(weekStart));
     return;
   }
 
@@ -219,29 +357,13 @@ async function handleApi(req, res) {
     try {
       const body = await getRequestBody(req);
       const payload = JSON.parse(body || "{}");
-      const data = readData();
+      const requestedWeekStart = normalizeDate(payload.weekStart);
+      const data = await readScheduleData(requestedWeekStart);
       const validSelection = validateSelectionPayload(payload, data.selections);
-      const now = new Date().toISOString();
-      const existingIndex = data.selections.findIndex((item) => item.id === validSelection.id);
-
-      if (existingIndex >= 0) {
-        data.selections[existingIndex] = {
-          ...data.selections[existingIndex],
-          ...validSelection,
-          updatedAt: now,
-        };
-      } else {
-        data.selections.push({
-          ...validSelection,
-          createdAt: now,
-          updatedAt: now,
-        });
-      }
-
-      writeData(data);
+      await saveScheduleSelection(validSelection, data.selections);
       sendJson(res, 200, {
         message: "บันทึกวันทำงานเรียบร้อย",
-        schedule: getScheduleForWeek(validSelection.weekStart),
+        schedule: await getScheduleForWeek(validSelection.weekStart),
       });
     } catch (error) {
       sendJson(res, 400, { error: error.message || "บันทึกไม่สำเร็จ" });
@@ -250,18 +372,21 @@ async function handleApi(req, res) {
   }
 
   if (req.method === "DELETE") {
+    if (!isAdminAuthorized(req)) {
+      sendJson(res, 401, { error: "รหัส Admin ไม่ถูกต้อง" });
+      return;
+    }
+
     const weekStart = normalizeDate(url.searchParams.get("weekStart"));
     if (!isIsoDate(weekStart)) {
       sendJson(res, 400, { error: "สัปดาห์ไม่ถูกต้อง" });
       return;
     }
 
-    const data = readData();
-    data.selections = data.selections.filter((item) => item.weekStart !== weekStart);
-    writeData(data);
+    await deleteScheduleWeek(weekStart);
     sendJson(res, 200, {
       message: "ล้างข้อมูลสัปดาห์นี้แล้ว",
-      schedule: getScheduleForWeek(weekStart),
+      schedule: await getScheduleForWeek(weekStart),
     });
     return;
   }
@@ -280,5 +405,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Shabu workday form is running at http://localhost:${PORT}`);
+  const storage = hasSupabaseConfig() ? "Supabase" : "local JSON";
+  console.log(`Shabu workday form is running at http://localhost:${PORT} (${storage})`);
 });

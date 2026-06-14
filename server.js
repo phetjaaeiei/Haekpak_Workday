@@ -425,7 +425,9 @@ async function handleApi(req, res) {
 
 const server = http.createServer((req, res) => {
   if (req.url.startsWith("/api/")) {
-    handleApi(req, res);
+    handleApi(req, res).catch((error) => {
+      sendJson(res, 500, { error: error.message || "Server error" });
+    });
     return;
   }
 

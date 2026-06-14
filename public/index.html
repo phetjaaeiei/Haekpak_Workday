@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ฟอร์มเลือกวันทำงานร้านชาบู</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#" id="homeLink" aria-label="กลับหน้าแรก">
+          <img src="./assets/shabu-bowl.svg" alt="" class="brand-mark" />
+          <span>
+            <strong>ตารางทำงานชาบู</strong>
+            <small id="topbarSubtitle">เลือกวันทำงานประจำสัปดาห์</small>
+          </span>
+        </a>
+
+        <nav class="top-actions" aria-label="เมนูหลัก">
+          <button class="button ghost" type="button" id="adminNavButton">
+            <span class="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z" /></svg>
+            </span>
+            Admin
+          </button>
+          <button class="button ghost is-hidden" type="button" id="newProfileButton">
+            <span class="button-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg>
+            </span>
+            ลงทะเบียนใหม่
+          </button>
+        </nav>
+      </header>
+
+      <main>
+        <section class="view intro-view is-active" id="profileView" aria-labelledby="profileTitle">
+          <form class="panel profile-panel" id="profileForm">
+            <div class="section-label">พนักงาน</div>
+            <h1 id="profileTitle">กรอกชื่อเล่นและเลือกตำแหน่ง</h1>
+
+            <label class="field">
+              <span>ชื่อเล่น</span>
+              <input id="nicknameInput" name="nickname" type="text" autocomplete="name" maxlength="40" placeholder="เช่น A, หมิว, ต้น" required />
+            </label>
+
+            <fieldset class="field role-field">
+              <legend>ตำแหน่ง</legend>
+              <div class="role-grid" id="roleGrid"></div>
+            </fieldset>
+
+            <button class="button primary full-width" type="submit">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6" /></svg>
+              </span>
+              ไปเลือกวันทำงาน
+            </button>
+          </form>
+
+          <aside class="visual-panel" aria-label="จำนวนคนต่อวันของแต่ละตำแหน่ง">
+            <img src="./assets/shabu-bowl.svg" alt="" class="hero-image" />
+            <div class="visual-copy">
+              <div class="section-label">โควตาต่อวัน</div>
+              <h2>เลือกได้คนละ 3 วันต่อสัปดาห์</h2>
+            </div>
+            <div class="quota-list" id="quotaList"></div>
+          </aside>
+        </section>
+
+        <section class="view schedule-view" id="scheduleView" aria-labelledby="scheduleTitle">
+          <div class="workspace-header">
+            <div>
+              <div class="section-label" id="currentRoleLabel">ตำแหน่ง</div>
+              <h1 id="scheduleTitle">เลือกวันทำงาน</h1>
+              <p id="selectionHint">เลือกให้ครบ 3 วันในสัปดาห์นี้</p>
+            </div>
+
+            <div class="week-controls" aria-label="เลือกสัปดาห์">
+              <button class="icon-button" type="button" id="prevWeekButton" aria-label="สัปดาห์ก่อนหน้า">
+                <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+              <label class="week-picker">
+                <span>สัปดาห์</span>
+                <input id="weekInput" type="date" />
+              </label>
+              <button class="icon-button" type="button" id="nextWeekButton" aria-label="สัปดาห์ถัดไป">
+                <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="status-message" id="statusMessage" role="status" aria-live="polite"></div>
+          <div class="calendar-grid" id="calendarGrid" aria-label="ปฏิทินเลือกวันทำงาน"></div>
+
+          <div class="selection-toolbar">
+            <div>
+              <strong id="selectedCount">เลือกแล้ว 0/3 วัน</strong>
+              <span id="selectedDaysText">ยังไม่ได้เลือกวัน</span>
+            </div>
+            <button class="button primary" type="button" id="saveSelectionButton">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /><path d="M17 21v-8H7v8M7 3v5h8" /></svg>
+              </span>
+              บันทึก
+            </button>
+          </div>
+        </section>
+
+        <section class="view admin-login-view" id="adminLoginView" aria-labelledby="adminLoginTitle">
+          <form class="panel admin-login-panel" id="adminLoginForm">
+            <div class="section-label">Admin</div>
+            <h1 id="adminLoginTitle">กรอกรหัสสำหรับ Admin</h1>
+            <label class="field">
+              <span>รหัสผ่าน</span>
+              <input id="adminPasswordInput" type="password" autocomplete="current-password" placeholder="กรอกรหัส Admin" required />
+            </label>
+            <div class="status-message" id="adminLoginMessage" role="alert" aria-live="polite"></div>
+            <button class="button primary full-width" type="submit">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /><path d="M10 17l5-5-5-5" /><path d="M15 12H3" /></svg>
+              </span>
+              เข้าหน้า Admin
+            </button>
+          </form>
+        </section>
+
+        <section class="view admin-view" id="adminView" aria-labelledby="adminTitle">
+          <div class="workspace-header">
+            <div>
+              <div class="section-label">Admin</div>
+              <h1 id="adminTitle">ปฏิทินรวมทุกตำแหน่ง</h1>
+              <p id="adminWeekCaption">ดูคนทำงานแต่ละวันของสัปดาห์นี้</p>
+            </div>
+            <div class="week-controls" aria-label="เลือกสัปดาห์สำหรับ Admin">
+              <button class="icon-button" type="button" id="adminPrevWeekButton" aria-label="สัปดาห์ก่อนหน้า">
+                <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+              <label class="week-picker">
+                <span>สัปดาห์</span>
+                <input id="adminWeekInput" type="date" />
+              </label>
+              <button class="icon-button" type="button" id="adminNextWeekButton" aria-label="สัปดาห์ถัดไป">
+                <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="admin-actions">
+            <button class="button ghost" type="button" id="refreshAdminButton">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.6 6.1L3 16M3 21v-5h5M3 12A9 9 0 0 1 18.6 5.9L21 8M21 3v5h-5" /></svg>
+              </span>
+              รีเฟรช
+            </button>
+            <button class="button danger" type="button" id="clearWeekButton">
+              <span class="button-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15" /></svg>
+              </span>
+              ล้างข้อมูลสัปดาห์นี้
+            </button>
+          </div>
+
+          <div class="admin-summary" id="adminSummary"></div>
+          <div class="admin-board" id="adminBoard"></div>
+        </section>
+      </main>
+    </div>
+
+    <template id="roleOptionTemplate">
+      <label class="role-option">
+        <input type="radio" name="role" />
+        <span>
+          <strong></strong>
+          <small></small>
+        </span>
+      </label>
+    </template>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

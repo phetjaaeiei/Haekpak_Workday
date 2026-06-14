@@ -1,0 +1,15 @@
+<svg width="240" height="240" viewBox="0 0 240 240" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Shabu bowl</title>
+  <desc id="desc">A simple illustrated hot pot bowl for the workday scheduling app.</desc>
+  <rect width="240" height="240" rx="32" fill="#FFF6DD"/>
+  <path d="M67 86C58 73 59 58 72 47" stroke="#0B7768" stroke-width="9" stroke-linecap="round"/>
+  <path d="M119 78C108 63 110 44 125 32" stroke="#D69B1F" stroke-width="9" stroke-linecap="round"/>
+  <path d="M169 87C160 73 161 59 174 48" stroke="#B7352B" stroke-width="9" stroke-linecap="round"/>
+  <path d="M45 112H195L183 185C181 198 170 208 157 208H83C70 208 59 198 57 185L45 112Z" fill="#FFFFFF" stroke="#1D2321" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M36 110C36 97 46 87 59 87H181C194 87 204 97 204 110V119H36V110Z" fill="#0B7768" stroke="#1D2321" stroke-width="9" stroke-linejoin="round"/>
+  <circle cx="83" cy="130" r="13" fill="#B7352B"/>
+  <circle cx="121" cy="132" r="15" fill="#D69B1F"/>
+  <circle cx="159" cy="130" r="13" fill="#0B7768"/>
+  <path d="M78 164H162" stroke="#1D2321" stroke-width="9" stroke-linecap="round"/>
+  <path d="M92 188H148" stroke="#0B7768" stroke-width="8" stroke-linecap="round"/>
+</svg>
